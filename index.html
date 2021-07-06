@@ -36,7 +36,6 @@
 
         .content {
             height: 100px;
-            border: 1px dotted #faf;
             border-radius: 5px;
             position: relative;
             background: rgba(170, 170, 170, .25);
@@ -64,31 +63,108 @@
         .text {
             color: rgba(0, 0, 0, 0.815);
         }
+
+        .page-box {
+
+            text-align: center;
+        }
+
+        .page-list {
+            display: inline-block;
+        }
+
+        .page-list .page {
+            display: inline-block;
+            padding: 0 15px;
+            height: 40px;
+            line-height: 40px;
+            vertical-align: middle;
+            cursor: pointer;
+            border: 1px solid #000;
+            border-radius: 3px;
+            margin: 0 15px;
+        }
+
+        .page-list .page.active {
+            background: #6cf;
+            color: #fff;
+            border: none;
+        }
+
+        .input {
+            display: inline-block;
+        }
+
+        .inputPage {
+            width: 100px;
+            height: 40px;
+            padding: 0 10px;
+            border-radius: 5px;
+            border: 1px solid rgba(102, 204, 255, .6);
+        }
+
+        .inputPage:focus {
+            border-color: aqua;
+            outline: none;
+        }
     </style>
 </head>
 
 <body>
-   <div class="btn-container">
+    <div class="btn-container">
         <div class="btn">发送请求</div>
     </div>
     <div class="box"></div>
+    <div class="page-box">
+        <ul class="page-list">
+
+        </ul>
+        <div class="input">
+            <input type="text" class="inputPage">
+        </div>
+        <div class="btn page-select">确定</div>
+    </div>
     <script>
         var btn = document.getElementsByClassName('btn')[0],
-            box = document.getElementsByClassName('box')[0]
+            box = document.getElementsByClassName('box')[0],
+            pages = document.getElementsByClassName('page-list')[0],
+            inputPage = document.getElementsByClassName('inputPage')[0],
+            selectPage = document.getElementsByClassName('page-select')[0]
+            ;
+        var currentPage = 1, limit = 20, maxPage; // 当前查询的页数,每页的数量
+        var flag = false;
         btn.onclick = function () {
             startRequest()
         }
+        selectPage.addEventListener('click', function () {
+            var v = inputPage.value;
+            if (!v) {
+                console.log('请先输入要查询的页数')
+                return
+            }
+            v = v.trim(); // 去掉首尾的空格
+            var reg = /^[1-9]\d*$/
+            if (!reg.test(v)) {
+                console.log('请输入一个有效的值')
+                return
+            }
+            if (v > maxPage) {
+                console.log('输入的值超过了最大页数')
+                return
+            }
+            startRequest(v);
+        })
         function createTag(name) {
             return document.createElement(name)
         }
-        function startRequest(offset) {
+        function startRequest(page) {
+            page = page || 1; // 此处，page为形参，相当于函数的局部变量，不需要用var再声明
             var xhr = new XMLHttpRequest()
-            var url = 'https://api.imjad.cn/cloudmusic/'
+            var url = 'http://120.48.26.203:3000/comment/music'
             var params = {
-                type: 'comments',
                 id: 30352891,
-                limit: 20,
-                offset: offset || 0
+                limit: limit, // 每一页的数量
+                offset: (page - 1) * limit // 偏移量，当page为1，查找第一页的评论，偏移量为0
             }
             // 因为是 get 请求，参数需要拼接在 url 后面
             var params1 = Object.keys(params).map(key => {
@@ -103,12 +179,16 @@
                     var obj = JSON.parse(xhr.response)
                     var arr = obj.comments
                     renderAll(arr);
+                    if (!flag) {
+                        flag = true;
+                        generagePagination(obj.total, params.limit);
+                    }
                 }
             }
             xhr.send(null)
         }
+        // 将评论渲染到页面中
         function renderAll(arr) {
-            console.time('all')
             const _box = document.createDocumentFragment();
             for (var i = 0; i < arr.length; i++) {
                 //console.log(arr[i])      
@@ -116,14 +196,105 @@
                 el.className = 'content'
                 var ava = arr[i].user.avatarUrl,
                     name = arr[i].user.nickname,
-                    content = arr[i].content
+                    content = arr[i].content,
+                    time = formatDate(arr[i].time, 'yyyy-MM-dd hh:mm:ss')
+                    ;
                 el.innerHTML = '<img  class="site" src=' + ava + '>' +
                     '<div class="per"><span class="name">' + name + ' : </span>' +
-                    '<span class="text">' + content + '</span></div>'
+                    '<span class="text">' + content + '</span><div class="time">' + time + '</div></div>'
                 _box.appendChild(el)
             }
-            box.appendChild(_box);
-            console.timeEnd('all');
+            box.innerHTML = ''; // 清空已经存在的数据
+            box.appendChild(_box); // 渲染新的数据
+        }
+        /**
+         * @desc 修改页数，重新请求数据并渲染到页面上
+        */
+        function changePage(e) {
+            var el = e.target;
+            var p = el.innerText;
+            if (p === '...') {
+                // 点击的是...，说明要选择隐藏的页数
+                // var prev = el.previousSibling; 
+                // 找到内容为...的元素前一个元素
+                // var val = prev.innerText
+                // if (val === '1') {
+                // 说明是左边的省略号
+                // }else {
+
+                // }
+            } else {
+                p = Number(p);
+                if (p === currentPage) {
+                    // 正在显示当前页数
+                    return
+                }
+                // 之前是选中状态的元素要去掉active
+                var active = document.getElementsByClassName('active')[0]
+                active.className = 'page'; // 去掉active
+                currentPage = p;
+                el.className = 'page active'; // 当前选中的li标为选中状态
+                // 去查询新页数的数据
+                startRequest(currentPage);
+            }
+
+        }
+        /**
+         * @desc 生成页数列表
+         * @param {number} total列表的总数
+         * @param {number} size每页展示的数量
+         * 
+        */
+        function generagePagination(total, size) {
+            const num = Math.ceil(total / size)
+            maxPage = num;
+            const allPage = [];
+            if (num <= 10) {
+                for (var i = 0; i < num; i++) {
+                    allPage.push(i + 1)
+                }
+            } else {
+                allPage.push(1, 2, 3, 4, 5, 6, 7, 8, '...', num)
+            }
+            renderPage(allPage);
+        }
+        function renderPage(pageList) {
+            var frag = document.createDocumentFragment()
+            pageList.forEach(page => {
+                var li = createTag('li');
+                li.addEventListener('click', changePage)
+                li.className = 'page'
+                if (page === currentPage) {
+                    // 默认查询的是第一页，第一页属于选中状态
+                    li.className = 'page active'
+                }
+                li.innerText = page
+                frag.appendChild(li)
+            })
+
+            pages.innerHTML = ''; // 先清空原有的内容，再渲染新的内容
+            pages.appendChild(frag);
+        }
+
+        function formatDate(date, format) {
+            date = new Date(date);
+            if (date.toString() === 'Invalid Date') {
+                console.log('请输入有效的时间');
+                return '';
+            }
+            const y = date.getFullYear();
+            const M = date.getMonth() + 1;
+            const d = date.getDate();
+            const h = date.getHours();
+            const m = date.getMinutes();
+            const s = date.getSeconds();
+            format = format.replace(/y+/, y);
+            format = format.replace(/M+/, ('0' + M).slice(-2));
+            format = format.replace(/d+/, ('0' + d).slice(-2));
+            format = format.replace(/h+/, ('0' + h).slice(-2));
+            format = format.replace(/m+/, ('0' + m).slice(-2));
+            format = format.replace(/s+/, ('0' + s).slice(-2));
+            return format;
         }
     </script>
 </body>
