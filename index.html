@@ -15,6 +15,66 @@
             padding: 0;
         }
 
+        .search-box {
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .search-box .words {
+            width: 200px;
+            height: 40px;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid rgba(102, 204, 255, .5);
+            outline: none;
+            margin-right: 15px;
+            box-sizing: border-box;
+        }
+
+        .search-box .words:focus {
+            border-color: aqua;
+        }
+
+        .song {
+            margin: 15px 0;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .song .img {
+            float: left;
+            width: 50px;
+            height: 50px;
+            margin-right: 20px;
+        }
+
+        .song .names {
+            min-height: 50px;
+            margin-left: 50px;
+        }
+
+        .song .singer {
+            color: #fff;
+        }
+
+        .btn-search {
+            display: inline-block;
+            height: 40px;
+            line-height: 40px;
+            vertical-align: middle;
+            cursor: pointer;
+            padding: 0 20px;
+            background: #6cf;
+            color: #fff;
+            border-radius: 3px;
+        }
+
+        .btn-search:active {
+            background: aqua;
+        }
+
         .btn-container {
             text-align: center;
         }
@@ -111,49 +171,128 @@
 </head>
 
 <body>
-    <div class="btn-container">
-        <div class="btn">发送请求</div>
+    <div class="search-box">
+        <input type="text" class="words" value="牵丝戏">
+        <div class="btn-search">查询</div>
     </div>
+    <div class="audio-play">
+        <audio src="" class="audio"></audio>
+    </div>
+    <div class="song-list"></div>
+    <!-- <div class="btn-container">
+        <div class="btn">发送请求</div>
+    </div> -->
     <div class="box"></div>
     <div class="page-box">
         <ul class="page-list">
 
         </ul>
-        <div class="input">
+        <!-- <div class="input">
             <input type="text" class="inputPage">
         </div>
-        <div class="btn page-select">确定</div>
+        <div class="btn page-select">确定</div> -->
     </div>
     <script>
         var btn = document.getElementsByClassName('btn')[0],
             box = document.getElementsByClassName('box')[0],
             pages = document.getElementsByClassName('page-list')[0],
             inputPage = document.getElementsByClassName('inputPage')[0],
-            selectPage = document.getElementsByClassName('page-select')[0]
+            selectPage = document.getElementsByClassName('page-select')[0],
+            startSearch = document.getElementsByClassName('btn-search')[0]
             ;
         var currentPage = 1, limit = 20, maxPage; // 当前查询的页数,每页的数量
-        var flag = false;
-        btn.onclick = function () {
-            startRequest()
-        }
-        selectPage.addEventListener('click', function () {
-            var v = inputPage.value;
-            if (!v) {
-                console.log('请先输入要查询的页数')
+        var flag = false, songId;
+        // btn.onclick = function () {
+        //     startRequest()
+        // }
+        // selectPage.addEventListener('click', function () {
+        //     var v = inputPage.value;
+        //     if (!v) {
+        //         console.log('请先输入要查询的页数')
+        //         return
+        //     }
+        //     v = v.trim(); // 去掉首尾的空格
+        //     var reg = /^[1-9]\d*$/
+        //     if (!reg.test(v)) {
+        //         console.log('请输入一个有效的值')
+        //         return
+        //     }
+        //     if (v > maxPage) {
+        //         console.log('输入的值超过了最大页数')
+        //         return
+        //     }
+        //     startRequest(v);
+        // })
+        startSearch.addEventListener('click', function () {
+            var word = document.getElementsByClassName('words')[0].value.trim();
+            if (!word) {
+                console.log('请输入要搜索的关键词');
                 return
             }
-            v = v.trim(); // 去掉首尾的空格
-            var reg = /^[1-9]\d*$/
-            if (!reg.test(v)) {
-                console.log('请输入一个有效的值')
-                return
+            var url = 'https://btea.site/music//search?keywords=' + word;
+            var xhr = new XMLHttpRequest()
+
+            xhr.open('get', url)
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    // 字符串转换成对象
+                    var obj = JSON.parse(xhr.response)
+                    var songs = obj.result.songs;
+                    var frag = document.createDocumentFragment();
+                    songs.forEach(song => {
+                        var el = createTag('div')
+                        el.setAttribute('data-id', song.id)
+                        el.className = 'song';
+                        el.innerHTML = '<img class="img" src="' + song.album.artist.img1v1Url + '" /><div class="names">' +
+                            '<div class="song-name">' + song.name + '</div><div class="singer">' + song.artists[0].name + '</div>'
+                            + '</div>'
+
+                        frag.appendChild(el);
+                        el.addEventListener('click', clickSong);
+                    })
+                    var songList = document.getElementsByClassName('song-list')[0]
+                    songList.innerHTML = ''
+                    songList.appendChild(frag);
+                }
             }
-            if (v > maxPage) {
-                console.log('输入的值超过了最大页数')
-                return
-            }
-            startRequest(v);
+            xhr.send(null)
         })
+        // 点击/选择某一首音乐
+        function clickSong(e) {
+            var el = e.currentTarget;
+            var id = el.getAttribute('data-id');
+            if (!el) {
+                console.log('获取歌曲id失败');
+                return
+            }
+            var url = 'https://btea.site/music/song/url?id=' + id;
+            var xhr = new XMLHttpRequest()
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    console.log(xhr.response);
+                    var obj = JSON.parse(xhr.response).data;
+                    var url = obj[0].url;
+                    var audio = document.getElementsByClassName('audio')[0]
+                    audio.src = url;
+                    audio.play();
+                    clearDom();
+                    flag = false;
+                    songId = id;
+                    currentPage = 1;
+                    startRequest();
+                }
+            }
+            xhr.open('get', url)
+            xhr.send(null)
+            console.log(id);
+        }
+        // 清除无关的元素
+        function clearDom() {
+            var songList = document.getElementsByClassName('song-list')[0]
+            songList.innerHTML = '';
+
+        }
+
         function createTag(name) {
             return document.createElement(name)
         }
@@ -162,7 +301,7 @@
             var xhr = new XMLHttpRequest()
             var url = 'https://btea.site/music/comment/music'
             var params = {
-                id: 30352891,
+                id: songId,
                 limit: limit, // 每一页的数量
                 offset: (page - 1) * limit // 偏移量，当page为1，查找第一页的评论，偏移量为0
             }
