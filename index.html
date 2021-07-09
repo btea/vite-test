@@ -133,24 +133,6 @@
             display: inline-block;
         }
 
-        .page-list .page {
-            display: inline-block;
-            padding: 0 15px;
-            height: 40px;
-            line-height: 40px;
-            vertical-align: middle;
-            cursor: pointer;
-            border: 1px solid #000;
-            border-radius: 3px;
-            margin: 0 15px;
-        }
-
-        .page-list .page.active {
-            background: #6cf;
-            color: #fff;
-            border: none;
-        }
-
         .input {
             display: inline-block;
         }
@@ -192,10 +174,11 @@
         </div>
         <div class="btn page-select">确定</div> -->
     </div>
+    <script src="./page.js" defer></script>
     <script>
         var btn = document.getElementsByClassName('btn')[0],
             box = document.getElementsByClassName('box')[0],
-            pages = document.getElementsByClassName('page-list')[0],
+            pagesBox = document.getElementsByClassName('page-list')[0],
             inputPage = document.getElementsByClassName('inputPage')[0],
             selectPage = document.getElementsByClassName('page-select')[0],
             startSearch = document.getElementsByClassName('btn-search')[0]
@@ -269,7 +252,6 @@
             var xhr = new XMLHttpRequest()
             xhr.onreadystatechange = function () {
                 if (xhr.readyState === 4) {
-                    console.log(xhr.response);
                     var obj = JSON.parse(xhr.response).data;
                     var url = obj[0].url;
                     var audio = document.getElementsByClassName('audio')[0]
@@ -284,7 +266,6 @@
             }
             xhr.open('get', url)
             xhr.send(null)
-            console.log(id);
         }
         // 清除无关的元素
         function clearDom() {
@@ -318,9 +299,10 @@
                     var obj = JSON.parse(xhr.response)
                     var arr = obj.comments
                     renderAll(arr);
-                    if (!flag) {
-                        flag = true;
-                        generagePagination(obj.total, params.limit);
+                    if (page === 1) {
+                        generatePage(obj.total, limit, pagesBox, function (num) {
+                            startRequest(num);
+                        })
                     }
                 }
             }
@@ -346,74 +328,7 @@
             box.innerHTML = ''; // 清空已经存在的数据
             box.appendChild(_box); // 渲染新的数据
         }
-        /**
-         * @desc 修改页数，重新请求数据并渲染到页面上
-        */
-        function changePage(e) {
-            var el = e.target;
-            var p = el.innerText;
-            if (p === '...') {
-                // 点击的是...，说明要选择隐藏的页数
-                // var prev = el.previousSibling; 
-                // 找到内容为...的元素前一个元素
-                // var val = prev.innerText
-                // if (val === '1') {
-                // 说明是左边的省略号
-                // }else {
 
-                // }
-            } else {
-                p = Number(p);
-                if (p === currentPage) {
-                    // 正在显示当前页数
-                    return
-                }
-                // 之前是选中状态的元素要去掉active
-                var active = document.getElementsByClassName('active')[0]
-                active.className = 'page'; // 去掉active
-                currentPage = p;
-                el.className = 'page active'; // 当前选中的li标为选中状态
-                // 去查询新页数的数据
-                startRequest(currentPage);
-            }
-
-        }
-        /**
-         * @desc 生成页数列表
-         * @param {number} total列表的总数
-         * @param {number} size每页展示的数量
-         * 
-        */
-        function generagePagination(total, size) {
-            const num = Math.ceil(total / size)
-            maxPage = num;
-            const allPage = [];
-            if (num <= 10) {
-                for (var i = 0; i < num; i++) {
-                    allPage.push(i + 1)
-                }
-            } else {
-                allPage.push(1, 2, 3, 4, 5, 6, 7, 8, '...', num)
-            }
-            renderPage(allPage);
-        }
-        function renderPage(pageList) {
-            var frag = document.createDocumentFragment()
-            pageList.forEach(page => {
-                var li = createTag('li');
-                li.addEventListener('click', changePage)
-                li.className = 'page'
-                if (page === currentPage) {
-                    // 默认查询的是第一页，第一页属于选中状态
-                    li.className = 'page active'
-                }
-                li.innerText = page
-                frag.appendChild(li)
-            })
-
-            pages.innerHTML = ''; // 先清空原有的内容，再渲染新的内容
-            pages.appendChild(frag);
-        }
 
         function formatDate(date, format) {
             date = new Date(date);
